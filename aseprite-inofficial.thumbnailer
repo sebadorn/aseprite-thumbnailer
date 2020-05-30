@@ -1,0 +1,4 @@
+[Thumbnailer Entry]
+TryExec=aseprite-inofficial-thumbnailer
+Exec=aseprite-inofficial-thumbnailer -i %i -o %o -s %s
+MimeType=application/octet-stream

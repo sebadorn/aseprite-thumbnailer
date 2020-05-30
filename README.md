@@ -16,12 +16,12 @@ Tested on Ubuntu 18.04.4 with GNOME 3.28.2.
 ## How to install
 
 ```bash
-# 1. Copy the `aseprite-thumbnailer` script to `/usr/bin/`.
-sudo cp aseprite-thumbnailer /usr/bin/
+# 1. Copy the `aseprite-inofficial-thumbnailer` script to `/usr/bin/`.
+sudo cp aseprite-inofficial-thumbnailer /usr/bin/
 # 2. Make it executable.
-sudo chmod +x /usr/bin/aseprite-thumbnailer
-# 3. Copy the `aseprite.thumbnailer` to `/usr/share/thumbnailers/`.
-sudo cp aseprite.thumbnailer /usr/share/thumbnailers/
+sudo chmod +x /usr/bin/aseprite-inofficial-thumbnailer
+# 3. Copy the `aseprite-inofficial.thumbnailer` to `/usr/share/thumbnailers/`.
+sudo cp aseprite-inofficial.thumbnailer /usr/share/thumbnailers/
 ```
 
 Then delete `~/.cache/thumbnails/fail/` so that all failed attempts to create a thumbnail are retried the next time the file is visible in the file viewer (probably Nautilus).
@@ -30,8 +30,8 @@ Then delete `~/.cache/thumbnails/fail/` so that all failed attempts to create a 
 ## How to uninstall
 
 Delete the files:
-* `/usr/share/thumbnailers/aseprite.thumbnailer`
-* `/usr/bin/aseprite-thumbnailer`
+* `/usr/share/thumbnailers/aseprite-inofficial.thumbnailer`
+* `/usr/bin/aseprite-inofficial-thumbnailer`
 
 
 ## Resources
