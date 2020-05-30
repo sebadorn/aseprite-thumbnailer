@@ -1,0 +1,146 @@
+#!/bin/bash
+
+# There is already this:
+# https://github.com/aseprite/aseprite/tree/master/src/desktop/linux
+# But it doesn't seem to be included yet.
+
+VERSION='1.0.0'
+ASEPRITE_ARGUMENTS=''
+
+function print_help {
+	echo "aseprite-thumbnailer $VERSION"
+	echo 'A thumbnailer for Aseprite files.'
+	echo ''
+	echo 'Usage: aseprite-thumbnailer -i /path/to/input.aseprite -o /path/to/output.png -s 128'
+	echo '  -h: Print this help and exit.'
+	echo '  -i: Path to input file with ".aseprite" or ".ase" extension.'
+	echo '  -o: Path to output file, which will be a PNG file.'
+	echo '  -s: Optional maximum pixel size for the longest side.'
+	echo '      Aspect ratio will be kept.'
+	echo '  -v: Print the version of this script and exit.'
+}
+
+while getopts ':hi:o:s:v' opt; do
+  case $opt in
+	h)
+		print_help
+		exit
+		;;
+	i)
+		FILE_IN="$OPTARG"
+		;;
+	o)
+		FILE_OUT="$OPTARG"
+		;;
+	s)
+		SIZE_LIMIT="$OPTARG"
+		;;
+	v)
+		echo "$VERSION"
+		exit
+		;;
+  esac
+done
+
+# Check if Aseprite is installed.
+if [ ! $(command -v 'aseprite') ]; then
+	echo 'ERROR: Aseprite not found.' >&2
+	exit 1
+fi
+
+# Check if an input file is given.
+if [ -z "$FILE_IN" ]; then
+	echo 'ERROR: Missing value for parameter -i' >&2
+	exit 1
+fi
+
+# Check if input file exists and is a file.
+if [ ! -f "$FILE_IN" ]; then
+	echo "ERROR: Input file either does not exist or is not a file: $FILE_IN" >&2
+	exit 1
+fi
+
+# Check if an output file is given.
+if [ -z "$FILE_OUT" ]; then
+	echo 'ERROR: Missing value for paramter -o' >&2
+	exit 1
+fi
+
+# Validate SIZE_LIMIT (-s) if set.
+if [ -n "$SIZE_LIMIT" ]; then
+	# Check if number.
+	if ! [[ "$SIZE_LIMIT" =~ ^[0-9]+$ ]]; then
+	   echo "ERROR: Value given to parameter -s has to be a number, but was: $SIZE_LIMIT" >&2
+	   exit 1
+	fi
+
+	# Check if greater 0.
+	if [ "$SIZE_LIMIT" -lt 1 ]; then
+		echo "ERROR: Value for parameter -s has to be greater than 0, but was: $SIZE_LIMIT" >&2
+		exit 1
+	fi
+fi
+
+# Check file extension.
+EXTENSION="${FILE_IN##*.}"
+
+if [ "$EXTENSION" != 'aseprite' ] && [ "$EXTENSION" != 'ase' ]; then
+	exit
+fi
+
+
+# Create the thumbnail.
+# There is also a "shrink-to" argument, but it is not documented
+# and in a test produced an image 1px too small.
+aseprite --batch --frame-range 0,0 --ignore-empty "$FILE_IN" --save-as "$FILE_OUT"
+
+
+# No resize argument given. We are done.
+if [ -n "$SIZE_LIMIT" ]; then
+	exit
+fi
+
+
+# Check the size and resize if necessary.
+# file returns something like: "PNG image data, 1920 x 1080, 8-bit/color RGB, non-interlaced"
+FILE_INFO=$(file -b "$FILE_OUT")
+# Replace ", " with a space. Then turn into a list, splitting on spaces.
+INFOS=(${FILE_INFO//, / })
+
+if [ ${INFOS[0]} != 'PNG' ]; then
+	echo 'ERROR: Thumbnail either could not be created or is not a PNG.' >&2
+	exit 1
+fi
+
+INFO_WIDTH=${INFOS[3]}
+INFO_HEIGHT=${INFOS[5]}
+
+# Check if a resize is necessary.
+if [ "$INFO_WIDTH" -gt "$SIZE_LIMIT" ] || [ "$INFO_HEIGHT" -gt "$SIZE_LIMIT" ]; then
+	# Resize with ImageMagick
+	if [ $(command -v 'mogrify') ]; then
+		# https://www.imagemagick.org/script/command-line-options.php#scale
+		mogrify -scale "${SIZE_LIMIT}x${SIZE_LIMIT}" "$FILE_OUT"
+	# Fallback
+	else
+		# Fallback 1: ffmpeg
+		if [ $(command -v 'ffmpeg') ]; then
+			FALLBACK='ffmpeg'
+		# Fallback 2: avconv
+		elif [ $(command -v 'avconv') ]; then
+			FALLBACK='avconv'
+		else
+			echo 'ERROR: No fallback (ffmpeg, avconv) for resizing (mogrify) found.' >&2
+			rm "$FILE_OUT"
+			exit 1
+		fi
+
+		# -y: yes to overwrite
+		# -loglevel 8: only print fatal errors
+		if [ "$INFO_WIDTH" -lt "$INFO_HEIGHT" ]; then
+			"$FALLBACK" -y -loglevel 8 -i "$FILE_OUT" -vf scale="-1:$SIZE_LIMIT" "$FILE_OUT"
+		else
+			"$FALLBACK" -y -loglevel 8 -i "$FILE_OUT" -vf scale="$SIZE_LIMIT:-1" "$FILE_OUT"
+		fi
+	fi
+fi
