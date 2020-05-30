@@ -5,7 +5,6 @@
 # But it doesn't seem to be included yet.
 
 VERSION='1.0.1'
-ASEPRITE_ARGUMENTS=''
 
 function print_help {
 	echo "aseprite-inofficial-thumbnailer $VERSION"
